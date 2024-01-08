@@ -31,6 +31,6 @@ bool wifi_is_connected(void);
  * 
  * @return void
  */
-void wifi_taskfunction(void *pvParameter);
+void wifi_taskfunction(void* pvParameter);
 
 #endif
