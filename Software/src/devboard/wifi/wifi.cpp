@@ -62,7 +62,6 @@ static void init_AP(void) {
 }
 
 static void init_wifi(void) {
-  
   WiFi.mode(WIFI_MODE); 
 #ifdef ENABLE_AP
   init_AP();
