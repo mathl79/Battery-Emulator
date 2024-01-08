@@ -10,7 +10,6 @@ unsigned long wifi_connect_start_time;
 unsigned long wifi_connect_current_time;
 const long wifi_connect_timeout = 5000;  // Timeout for WiFi connect in milliseconds
 
-
 static void wifi_reconnect(void) {
   if (WiFi.status() != WL_CONNECTED) {
     WiFi.reconnect();
@@ -75,8 +74,6 @@ static void init_wifi(void) {
 
 void init_wireless(void) {
   xTaskCreate(wifi_taskfunction, "Wifi task", 1024 * 8, NULL, 1, NULL);
-  // xTaskCreate(webserver_taskfunction, "Webserver task", 1024 * 4, NULL, 1, NULL); // Extra space for OTA, we should look at the high water marks for these tasks...
-  // xTaskCreate(mqtt_taskfunction, "MQTT task", 1024, NULL, 1, NULL);
 }
 
 bool wifi_is_connected(void) {
