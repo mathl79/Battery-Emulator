@@ -83,7 +83,7 @@ void wifi_taskfunction(void* pvParameters) {
 
   while (true) {
     wifi_reconnect();
-    if(WiFi.status() == WL_CONNECTED) {
+    if (WiFi.status() == WL_CONNECTED) {
       webserver_loop();
       mqtt_loop();
     }
