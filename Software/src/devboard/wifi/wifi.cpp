@@ -76,10 +76,6 @@ void init_wireless(void) {
   xTaskCreate(wifi_taskfunction, "Wifi task", 1024 * 8, NULL, 1, NULL);
 }
 
-bool wifi_is_connected(void) {
-  return WiFi.status() == WL_CONNECTED;
-}
-
 void wifi_taskfunction(void* pvParameters) {
   init_wifi();
   init_webserver();
@@ -87,8 +83,10 @@ void wifi_taskfunction(void* pvParameters) {
 
   while (true) {
     wifi_reconnect();
-    webserver_loop();
-    mqtt_loop();
+    if(WiFi.status() == WL_CONNECTED) {
+      webserver_loop();
+      mqtt_loop();
+    }
     delay(1);
   }
 }

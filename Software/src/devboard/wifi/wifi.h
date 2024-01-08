@@ -16,15 +16,6 @@ extern const char* passwordAP;
 void init_wireless(void);
 
 /**
- * @brief Returns the WiFi connections status
- *
- * @param[in] void
- * 
- * @return bool: true = connected, false = disconnected
- */
-bool wifi_is_connected(void);
-
-/**
  * @brief FreeRTOS taskfunction
  *
  * @param[in] *pvParameters: Optional parameter pointer
