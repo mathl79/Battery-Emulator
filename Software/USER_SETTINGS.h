@@ -17,7 +17,7 @@
 
 /* Select inverter communication protocol. See Wiki for which to use with your inverter: https://github.com/dalathegreat/BYD-Battery-Emulator-For-Gen24/wiki */
 //#define BYD_CAN          //Enable this line to emulate a "BYD Battery-Box Premium HVS" over CAN Bus
-#define BYD_MODBUS       //Enable this line to emulate a "BYD 11kWh HVM battery" over Modbus RTU
+#define BYD_MODBUS         //Enable this line to emulate a "BYD 11kWh HVM battery" over Modbus RTU
 //#define LUNA2000_MODBUS  //Enable this line to emulate a "Luna2000 battery" over Modbus RTU
 //#define PYLON_CAN        //Enable this line to emulate a "Pylontech battery" over CAN bus
 //#define SMA_CAN          //Enable this line to emulate a "BYD Battery-Box H 8.9kWh, 7 mod" over CAN bus
@@ -48,31 +48,32 @@
 // High level connectivity settings below. See USER_SETTINGS.cpp for detailed settings.
 
 // Enabling any define below enables Wifi functionality. See USER_SETTINGS.cpp for the Wifi settings.
-#define USE_WEBSERVER             //Enable this line to run the webserver and enable OTA updates.
-#define USE_MQTT                  //Enable this line to enable MQTT functionality. See USER_SETTINGS.cpp for the MQTT settings.
+#define USE_WEBSERVER //Enable this line to run the webserver and enable OTA updates.
+#define USE_MQTT  //Enable this line to enable MQTT functionality. See USER_SETTINGS.cpp for the MQTT settings.
 
 // Various Wifi specific defines, placed here to remove the need for messier code and issues with optimizations/linking.
-//#define ENABLE_AP                 //Enable this line to run Wifi in AP mode (only broadcasting the LilyGO access point SSID).
-#define ENABLE_STA                //Enable this line to run Wifi in STA mode (connected to your home network).
+//#define ENABLE_AP   //Enable this line to run Wifi in AP mode (only broadcasting the LilyGO access point SSID).
+#define ENABLE_STA //Enable this line to run Wifi in STA mode (connected to your home network).
 
-#define MQTT_SUBSCRIPTIONS    {"my/topic/abc", "my/other/topic"}
-#define MQTT_SERVER           "192.168.xxx.yyy"
-#define MQTT_PORT             1883
+#define MQTT_SUBSCRIPTIONS \
+  {"my/topic/abc", "my/other/topic"}
+#define MQTT_SERVER "192.168.xxx.yyy"
+#define MQTT_PORT 1883
 
 // ---- Derived defines below ----
 
 #if defined(USE_WEBSERVER) || defined(USE_MQTT)
-  #define USE_WIFI
+#define USE_WIFI
 #endif
 
 #if defined(ENABLE_AP) && defined(ENABLE_STA)
-  #define WIFI_MODE WIFI_AP_STA
+#define WIFI_MODE WIFI_AP_STA
 #elif defined(ENABLE_AP)
-  #define WIFI_MODE WIFI_AP
+#define WIFI_MODE WIFI_AP
 #elif defined(ENABLE_STA)
-  #define WIFI_MODE WIFI_STA
+#define WIFI_MODE WIFI_STA
 #else
-  #define WIFI_MODE WIFI_OFF // Just in case
+#define WIFI_MODE WIFI_OFF // Just in case
 #endif
 
 #endif
