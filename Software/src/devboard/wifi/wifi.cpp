@@ -1,9 +1,9 @@
+#include "wifi.h"
 #include <freertos/FreeRTOS.h>
 #include <WiFi.h>
 #include "../../../USER_SETTINGS.h"
-#include "../webserver/webserver.h"
 #include "../mqtt/mqtt.h"
-#include "wifi.h"
+#include "../webserver/webserver.h"
 
 // Wifi connect time declarations and definition
 unsigned long wifi_connect_start_time;
@@ -83,12 +83,12 @@ bool wifi_is_connected(void) {
   return WiFi.status() == WL_CONNECTED;
 }
 
-void wifi_taskfunction(void *pvParameters) {
+void wifi_taskfunction(void* pvParameters) {
   init_wifi();
   init_webserver();
   init_mqtt();
 
-  while(true) {
+  while (true) {
     wifi_reconnect();
     webserver_loop();
     mqtt_loop();

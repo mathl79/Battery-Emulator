@@ -24,13 +24,4 @@ void init_wireless(void);
  */
 bool wifi_is_connected(void);
 
-/**
- * @brief FreeRTOS taskfunction
- *
- * @param[in] *pvParameters: Optional parameter pointer
- * 
- * @return void
- */
-void wifi_taskfunction(void *pvParameter);
-
 #endif
