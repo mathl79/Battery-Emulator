@@ -30,46 +30,6 @@ extern bool batteryAllowsContactorClosing;   //Bool, 1=true, 0=false
 extern bool inverterAllowsContactorClosing;  //Bool, 1=true, 0=false
 
 extern const char* ssid;
-extern const char* password;
-extern const char* ssidAP;
-extern const char* passwordAP;
-
-/**
- * @brief Initialization function for the webserver.
- *
- * @param[in] void
- *
- * @return void
- */
-void init_webserver();
-
-/**
- * @brief Initialization function that creates a WiFi Access Point.
- *
- * @param[in] void
- * 
- * @return void
- */
-void init_WiFi_AP();
-
-/**
- * @brief Initialization function that connects to an existing network.
- *
- * @param[in] ssid WiFi network name
- * @param[in] password WiFi network password
- * 
- * @return void
- */
-void init_WiFi_STA(const char* ssid, const char* password);
-
-/**
- * @brief Initialization function for ElegantOTA.
- *
- * @param[in] void
- * 
- * @return void
- */
-void init_ElegantOTA();
 
 /**
  * @brief Replaces placeholder with content section in web page
@@ -107,5 +67,11 @@ void onOTAProgress(size_t current, size_t final);
  * @return bool success: success = true, failed = false
  */
 void onOTAEnd(bool success);
+
+void init_webserver(void);
+
+void webserver_loop(void);
+
+bool webserver_ota_started(void);
 
 #endif

@@ -1,3 +1,4 @@
+#include <freertos/FreeRTOS.h>
 #include "webserver.h"
 
 // Create AsyncWebServer object on port 80
@@ -5,6 +6,7 @@ AsyncWebServer server(80);
 
 // Measure OTA progress
 unsigned long ota_progress_millis = 0;
+bool ota_started = false;
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
@@ -33,93 +35,25 @@ const char index_html[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-String wifi_state;
-bool wifi_connected;
+static void init_ElegantOTA() {
+  ElegantOTA.begin(&server);  // Start ElegantOTA
+  // ElegantOTA callbacks
+  ElegantOTA.onStart(onOTAStart);
+  ElegantOTA.onProgress(onOTAProgress);
+  ElegantOTA.onEnd(onOTAEnd);
+}
 
-// Wifi connect time declarations and definition
-unsigned long wifi_connect_start_time;
-unsigned long wifi_connect_current_time;
-const long wifi_connect_timeout = 5000;  // Timeout for WiFi connect in milliseconds
-
-void init_webserver() {
-// Configure WiFi
-#ifdef ENABLE_AP
-  WiFi.mode(WIFI_AP_STA);  // Simultaneous WiFi AP and Router connection
-  init_WiFi_AP();
-  init_WiFi_STA(ssid, password);
-#else
-  WiFi.mode(WIFI_STA);  // Only Router connection
-  init_WiFi_STA(ssid, password);
-#endif
-
+void init_webserver(void) {
   // Route for root / web page
   server.on("/", HTTP_GET,
             [](AsyncWebServerRequest* request) { request->send_P(200, "text/html", index_html, processor); });
-
-  // Send a GET request to <ESP_IP>/update
-  server.on("/debug", HTTP_GET,
-            [](AsyncWebServerRequest* request) { request->send(200, "text/plain", "Debug: all OK."); });
 
   // Initialize ElegantOTA
   init_ElegantOTA();
 
   // Start server
   server.begin();
-}
-
-void init_WiFi_AP() {
-  Serial.print("Creating Access Point: ");
-  Serial.println(ssidAP);
-  Serial.print("With password: ");
-  Serial.println(passwordAP);
-
-  WiFi.softAP(ssidAP, passwordAP);
-
-  IPAddress IP = WiFi.softAPIP();
-  Serial.println("Access Point created.");
-  Serial.print("IP address: ");
-  Serial.println(IP);
-}
-
-void init_WiFi_STA(const char* ssid, const char* password) {
-  // Connect to Wi-Fi network with SSID and password
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);
-
-  wifi_connect_start_time = millis();
-  wifi_connect_current_time = wifi_connect_start_time;
-  while ((wifi_connect_current_time - wifi_connect_start_time) <= wifi_connect_timeout &&
-         WiFi.status() != WL_CONNECTED) {  // do this loop for up to 5000ms
-    // to break the loop when the connection is not established (wrong ssid or password).
-    delay(500);
-    Serial.print(".");
-    wifi_connect_current_time = millis();
-  }
-  if (WiFi.status() == WL_CONNECTED) {  // WL_CONNECTED is assigned when connected to a WiFi network
-    wifi_connected = true;
-    wifi_state = "Connected";
-    // Print local IP address and start web server
-    Serial.println("");
-    Serial.print("Connected to WiFi network: ");
-    Serial.println(ssid);
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-  } else {
-    wifi_connected = false;
-    wifi_state = "Not connected";
-    Serial.print("Not connected to WiFi network: ");
-    Serial.println(ssid);
-    Serial.println("Please check WiFi network name and password, and if WiFi network is available.");
-  }
-}
-
-void init_ElegantOTA() {
-  ElegantOTA.begin(&server);  // Start ElegantOTA
-  // ElegantOTA callbacks
-  ElegantOTA.onStart(onOTAStart);
-  ElegantOTA.onProgress(onOTAProgress);
-  ElegantOTA.onEnd(onOTAEnd);
+  Serial.println("Webserver and OTA handling online");
 }
 
 String processor(const String& var) {
@@ -156,8 +90,9 @@ String processor(const String& var) {
     }
     // Display ssid of network connected to and, if connected to the WiFi, its own IP
     content += "<h4>SSID: " + String(ssid) + "</h4>";
+    String wifi_state = (WiFi.status() == WL_CONNECTED) ? "Connected" : "Not connected";
     content += "<h4>Wifi status: " + wifi_state + "</h4>";
-    if (wifi_connected == true) {
+    if (WiFi.status() == WL_CONNECTED) {
       content += "<h4>IP: " + WiFi.localIP().toString() + "</h4>";
     }
     // Close the block
@@ -316,14 +251,10 @@ String processor(const String& var) {
 void onOTAStart() {
   // Log when OTA has started
   Serial.println("OTA update started!");
-  ESP32Can.CANStop();
-  bms_status = 5;  //Inform inverter that we are updating
-  LEDcolor = BLUE;
+  ota_started = true;
 }
 
 void onOTAProgress(size_t current, size_t final) {
-  bms_status = 5;  //Inform inverter that we are updating
-  LEDcolor = BLUE;
   // Log every 1 second
   if (millis() - ota_progress_millis > 1000) {
     ota_progress_millis = millis();
@@ -338,6 +269,12 @@ void onOTAEnd(bool success) {
   } else {
     Serial.println("There was an error during OTA update!");
   }
-  bms_status = 5;  //Inform inverter that we are updating
-  LEDcolor = BLUE;
+}
+
+void webserver_loop(void) {
+  ElegantOTA.loop();
+}
+
+bool webserver_ota_started(void) {
+  return ota_started;
 }

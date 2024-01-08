@@ -6,6 +6,8 @@
 #include "USER_SETTINGS.h"
 #include "src/battery/BATTERIES.h"
 #include "src/devboard/config.h"
+#include "src/devboard/webserver/webserver.h"
+#include "src/devboard/wifi/wifi.h"
 #include "src/inverter/INVERTERS.h"
 #include "src/lib/adafruit-Adafruit_NeoPixel/Adafruit_NeoPixel.h"
 #include "src/lib/eModbus-eModbus/Logging.h"
@@ -13,10 +15,6 @@
 #include "src/lib/eModbus-eModbus/scripts/mbServerFCs.h"
 #include "src/lib/miwagner-ESP32-Arduino-CAN/CAN_config.h"
 #include "src/lib/miwagner-ESP32-Arduino-CAN/ESP32CAN.h"
-
-#ifdef WEBSERVER
-#include "src/devboard/webserver/webserver.h"
-#endif
 
 // Interval settings
 int intervalUpdateValues = 4800;  // Interval at which to update inverter values / Modbus registers
@@ -113,10 +111,6 @@ bool inverterAllowsContactorClosing = true;
 void setup() {
   init_serial();
 
-#ifdef WEBSERVER
-  init_webserver();
-#endif
-
   init_CAN();
 
   init_LED();
@@ -130,16 +124,12 @@ void setup() {
   inform_user_on_inverter();
 
   inform_user_on_battery();
+
+  init_wireless();
 }
 
 // Perform main program functions
 void loop() {
-
-#ifdef WEBSERVER
-  // Over-the-air updates by ElegantOTA
-  ElegantOTA.loop();
-#endif
-
   // Input
   receive_can();  // Receive CAN messages. Runs as fast as possible
 #ifdef DUAL_CAN
@@ -170,6 +160,12 @@ void loop() {
 #ifdef DUAL_CAN
   send_can2();
 #endif
+  if (webserver_ota_started()) {
+    Serial.println("OTA started, stopping CAN traffic");
+    ESP32Can.CANStop();
+    bms_status = 5;  //Inform inverter that we are updating
+    LEDcolor = BLUE;
+  }
 }
 
 // Initialization functions
