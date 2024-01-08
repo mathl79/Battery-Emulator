@@ -26,6 +26,9 @@ unsigned long previousMillisUpdateVal = 0;
 CAN_device_t CAN_cfg;          // CAN Config
 const int rx_queue_size = 10;  // Receive Queue size
 
+// OTA tracker
+bool ota_started = false;
+
 #ifdef DUAL_CAN
 #include "src/lib/pierremolinaro-acan2515/ACAN2515.h"
 static const uint32_t QUARTZ_FREQUENCY = 8UL * 1000UL * 1000UL;  // 8 MHz
@@ -160,11 +163,12 @@ void loop() {
 #ifdef DUAL_CAN
   send_can2();
 #endif
-  if (webserver_ota_started()) {
+  if (webserver_ota_started() && ota_started == false) {
     Serial.println("OTA started, stopping CAN traffic");
     ESP32Can.CANStop();
     bms_status = 5;  //Inform inverter that we are updating
     LEDcolor = BLUE;
+    ota_started = true;
   }
 }
 

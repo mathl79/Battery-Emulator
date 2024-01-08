@@ -30,8 +30,8 @@ static void publish_values(void) {
            "}\n",
            ((float)SOC) / 100.0, ((float)StateOfHealth) / 100.0, ((float)((int16_t)temperature_min)) / 10.0,
            ((float)((int16_t)temperature_max)) / 10.0, cell_max_voltage, cell_min_voltage);
-  client.publish("battery/info", msg);
-  // Serial.println(msg);  // Uncomment to print the payload on serial
+  bool result = client.publish("battery/info", msg, true);
+  Serial.println(msg);  // Uncomment to print the payload on serial
 }
 
 /* This is called whenever a subscribed topic changes (hopefully) */
@@ -73,10 +73,10 @@ static void reconnect() {
 void init_mqtt(void) {
   client.setServer(MQTT_SERVER, MQTT_PORT);
   client.setCallback(callback);
+  Serial.println("MQTT initialized");
 
   previousMillisUpdateVal = millis();
   reconnect();
-  Serial.println("MQTT initialized");
 }
 
 void mqtt_loop(void) {
