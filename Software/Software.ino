@@ -168,7 +168,7 @@ void loop() {
     ESP32Can.CANStop();
     bms_status = 5;  //Inform inverter that we are updating
     LEDcolor = BLUE;
-    ota_started = true;
+    ota_was_started = true;
   }
 }
 
