@@ -6,8 +6,6 @@
 #include "USER_SETTINGS.h"
 #include "src/battery/BATTERIES.h"
 #include "src/devboard/config.h"
-#include "src/devboard/webserver/webserver.h"
-#include "src/devboard/wifi/wifi.h"
 #include "src/inverter/INVERTERS.h"
 #include "src/lib/adafruit-Adafruit_NeoPixel/Adafruit_NeoPixel.h"
 #include "src/lib/eModbus-eModbus/Logging.h"
@@ -15,6 +13,14 @@
 #include "src/lib/eModbus-eModbus/scripts/mbServerFCs.h"
 #include "src/lib/miwagner-ESP32-Arduino-CAN/CAN_config.h"
 #include "src/lib/miwagner-ESP32-Arduino-CAN/ESP32CAN.h"
+
+#ifdef USE_WIFI
+#include "src/devboard/wifi/wifi.h"
+#endif
+
+#ifdef USE_WEBSERVER
+#include "src/devboard/webserver/webserver.h"
+#endif
 
 // Interval settings
 int intervalUpdateValues = 4800;  // Interval at which to update inverter values / Modbus registers

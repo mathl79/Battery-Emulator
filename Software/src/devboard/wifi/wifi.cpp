@@ -2,8 +2,14 @@
 #include <WiFi.h>
 #include <freertos/FreeRTOS.h>
 #include "../../../USER_SETTINGS.h"
+
+#ifdef USE_WIFI
 #include "../mqtt/mqtt.h"
+#endif
+
+#ifdef USE_WEBSERVER
 #include "../webserver/webserver.h"
+#endif
 
 // Wifi connect time declarations and definition
 unsigned long wifi_connect_start_time;

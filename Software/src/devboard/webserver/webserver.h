@@ -32,13 +32,13 @@ extern bool inverterAllowsContactorClosing;  //Bool, 1=true, 0=false
 extern const char* ssid;
 
 /**
- * @brief Replaces placeholder with content section in web page
+ * @brief Executes on OTA end 
  *
- * @param[in] var
- *
- * @return String
+ * @param[in] void
+ * 
+ * @return bool success: success = true, failed = false
  */
-String processor(const String& var);
+void init_webserver(void);
 
 /**
  * @brief Executes on OTA start 
@@ -62,16 +62,28 @@ void onOTAProgress(size_t current, size_t final);
 /**
  * @brief Executes on OTA end 
  *
- * @param[in] void
+ * @param[in] bool success: success = true, failed = false
  * 
- * @return bool success: success = true, failed = false
+ * @return 
  */
 void onOTAEnd(bool success);
 
-void init_webserver(void);
-
+/**
+ * @brief Executes on OTA end 
+ *
+ * @param[in] void
+ * 
+ * @return void
+ */
 void webserver_loop(void);
 
+/**
+ * @brief Executes on OTA end 
+ *
+ * @param[in] void
+ * 
+ * @return bool: started = true, not started = false
+ */
 bool webserver_ota_started(void);
 
 #endif

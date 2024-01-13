@@ -35,6 +35,9 @@ const char index_html[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
+// Local function prototype
+static String processor(const String& var);
+
 static void init_ElegantOTA() {
   ElegantOTA.begin(&server);  // Start ElegantOTA
   // ElegantOTA callbacks
@@ -56,7 +59,7 @@ void init_webserver(void) {
   Serial.println("Webserver and OTA handling online");
 }
 
-String processor(const String& var) {
+static String processor(const String& var) {
   if (var == "PLACEHOLDER") {
     String content = "";
     //Page format
