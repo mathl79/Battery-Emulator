@@ -84,14 +84,22 @@ void init_wireless(void) {
 
 void wifi_taskfunction(void* pvParameters) {
   init_wifi();
+#ifdef USE_WEBSERVER
   init_webserver();
+#endif
+#ifdef USE_MQTT
   init_mqtt();
+#endif
 
   while (true) {
     wifi_reconnect();
     if (WiFi.status() == WL_CONNECTED) {
+#ifdef USE_WEBSERVER
       webserver_loop();
+#endif
+#ifdef USE_MQTT
       mqtt_loop();
+#endif
     }
     delay(1);
   }

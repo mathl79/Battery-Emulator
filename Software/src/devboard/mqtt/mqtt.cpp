@@ -15,7 +15,6 @@ char msg[MSG_BUFFER_SIZE];
 int value = 0;
 static unsigned long previousMillisUpdateVal;
 
-#ifdef USE_MQTT
 /** Publish global values and call callbacks for specific modules */
 static void publish_values(void) {
 
@@ -68,7 +67,6 @@ static void reconnect() {
     // Wait 5 seconds before retrying
   }
 }
-#endif  //
 
 void init_mqtt(void) {
   client.setServer(MQTT_SERVER, MQTT_PORT);

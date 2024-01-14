@@ -123,7 +123,9 @@ void setup() {
 
   inform_user_on_battery();
 
+#ifdef USE_WIFI
   init_wireless();
+#endif
 }
 
 // Perform main program functions
@@ -158,6 +160,7 @@ void loop() {
 #ifdef DUAL_CAN
   send_can2();
 #endif
+#ifdef USE_WEBSERVER
   if (webserver_ota_started() && ota_was_started == false) {
     Serial.println("OTA started, stopping CAN traffic");
     ESP32Can.CANStop();
@@ -165,6 +168,7 @@ void loop() {
     LEDcolor = BLUE;
     ota_was_started = true;
   }
+#endif
 }
 
 // Initialization functions
