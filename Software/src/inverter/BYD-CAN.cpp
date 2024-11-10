@@ -233,31 +233,31 @@ void send_can_inverter() {
   if (currentMillis - previousMillis2s >= INTERVAL_2_S) {
     previousMillis2s = currentMillis;
 
-    transmit_can(&BYD_110, can_config.inverter);
+    transmit_can(&BYD_110, if_config.inverter);
   }
   // Send 10s CAN Message
   if (currentMillis - previousMillis10s >= INTERVAL_10_S) {
     previousMillis10s = currentMillis;
 
-    transmit_can(&BYD_150, can_config.inverter);
-    transmit_can(&BYD_1D0, can_config.inverter);
-    transmit_can(&BYD_210, can_config.inverter);
+    transmit_can(&BYD_150, if_config.inverter);
+    transmit_can(&BYD_1D0, if_config.inverter);
+    transmit_can(&BYD_210, if_config.inverter);
   }
   //Send 60s message
   if (currentMillis - previousMillis60s >= INTERVAL_60_S) {
     previousMillis60s = currentMillis;
 
-    transmit_can(&BYD_190, can_config.inverter);
+    transmit_can(&BYD_190, if_config.inverter);
   }
 }
 
 void send_intial_data() {
-  transmit_can(&BYD_250, can_config.inverter);
-  transmit_can(&BYD_290, can_config.inverter);
-  transmit_can(&BYD_2D0, can_config.inverter);
-  transmit_can(&BYD_3D0_0, can_config.inverter);
-  transmit_can(&BYD_3D0_1, can_config.inverter);
-  transmit_can(&BYD_3D0_2, can_config.inverter);
-  transmit_can(&BYD_3D0_3, can_config.inverter);
+  transmit_can(&BYD_250, if_config.inverter);
+  transmit_can(&BYD_290, if_config.inverter);
+  transmit_can(&BYD_2D0, if_config.inverter);
+  transmit_can(&BYD_3D0_0, if_config.inverter);
+  transmit_can(&BYD_3D0_1, if_config.inverter);
+  transmit_can(&BYD_3D0_2, if_config.inverter);
+  transmit_can(&BYD_3D0_3, if_config.inverter);
 }
 #endif

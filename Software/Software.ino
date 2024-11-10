@@ -21,8 +21,6 @@
 #include "src/lib/eModbus-eModbus/Logging.h"
 #include "src/lib/eModbus-eModbus/ModbusServerRTU.h"
 #include "src/lib/eModbus-eModbus/scripts/mbServerFCs.h"
-#include "src/lib/miwagner-ESP32-Arduino-CAN/CAN_config.h"
-#include "src/lib/miwagner-ESP32-Arduino-CAN/ESP32CAN.h"
 
 #ifdef WIFI
 #include "src/devboard/wifi/wifi.h"
@@ -65,15 +63,44 @@ CAN_device_t CAN_cfg;          // CAN Config
 const int rx_queue_size = 10;  // Receive Queue size
 volatile bool send_ok = 0;
 
-#ifdef DUAL_CAN
-#include "src/lib/pierremolinaro-acan2515/ACAN2515.h"
-static const uint32_t QUARTZ_FREQUENCY = CRYSTAL_FREQUENCY_MHZ * 1000000UL;  //MHZ configured in USER_SETTINGS.h
-ACAN2515 can(MCP2515_CS, SPI, MCP2515_INT);
-static ACAN2515_Buffer16 gBuffer;
+#if defined(CAN_NATIVE_USED) && defined(ARDUINO_ESP32S3_DEV)
+#include "ACAN_ESP32.h"
+//static ACAN_ESP32_Buffer16 gBuffer0;
+#else
+#include "src/lib/miwagner-ESP32-Arduino-CAN/CAN_config.h"
+#include "src/lib/miwagner-ESP32-Arduino-CAN/ESP32CAN.h"
 #endif
-#ifdef CAN_FD
-#include "src/lib/pierremolinaro-ACAN2517FD/ACAN2517FD.h"
+
+#if defined(CAN_ADDON_MCP2515_USED) || defined(CAN_ADDON_MCP2515_2_USED)
+#include "ACAN2515.h"
+static const uint32_t QUARTZ_FREQUENCY = CRYSTAL_FREQUENCY_MHZ * 1000000UL;  //MHZ configured in USER_SETTINGS.h
+#endif
+
+#ifdef CAN_ADDON_MCP2515_USED
+ACAN2515 can1(MCP2515_CS, SPI, MCP2515_INT);
+static ACAN2515_Buffer16 gBuffer1;
+#endif
+
+#ifdef CAN_ADDON_MCP2515_2_USED
+//uninitalised pointers to SPI objects
+SPIClass* hspi = new SPIClass(HSPI);
+ACAN2515 can2(MCP2515_2_CS, *hspi, MCP2515_2_INT);
+static ACAN2515_Buffer16 gBuffer2;
+#endif
+
+#if defined(CAN_ADDON_FD_MCP2517_USED) || defined(CAN_ADDON_FD_MCP2517_2_USED)
+#include "ACAN2517FD.h"
+#endif
+
+#ifdef CAN_ADDON_FD_MCP2517_USED
 ACAN2517FD canfd(MCP2517_CS, SPI, MCP2517_INT);
+#else
+typedef char CANFDMessage;
+#endif
+
+#ifdef CAN_ADDON_FD_MCP2517_2_USED
+SPIClass* hspi = new SPIClass(HSPI);
+ACAN2517FD canfd2(MCP2517_CS, *hspi, MCP2517_INT);
 #else
 typedef char CANFDMessage;
 #endif
@@ -85,6 +112,7 @@ uint16_t mbPV[MB_RTU_NUM_VALUES];  // Process variable memory
 // Create a ModbusRTU server instance listening on Serial2 with 2000ms timeout
 ModbusServerRTU MBserver(Serial2, 2000);
 #endif
+
 #if defined(SERIAL_LINK_RECEIVER) || defined(SERIAL_LINK_TRANSMITTER)
 #define SERIAL_LINK_BAUDRATE 112500
 #endif
@@ -163,30 +191,42 @@ void setup() {
                           TASK_CONNECTIVITY_PRIO, &connectivity_loop_task, WIFI_CORE);
 #endif
 
+  Serial.println("init events");
   init_events();
 
+  Serial.println("init CAN");
   init_CAN();
 
+  Serial.println("init contractors");
   init_contactors();
 
+  Serial.println("init RS485");
   init_rs485();
 
+  Serial.println("init SDL");
   init_serialDataLink();
 
+  Serial.println("init inverter");
   init_inverter();
 
+  Serial.println("init battery");
   init_battery();
 
 #ifdef EQUIPMENT_STOP_BUTTON
+  Serial.println("init stop button");
   init_equipment_stop_button();
 #endif
   // BOOT button at runtime is used as an input for various things
+  Serial.println("GPIO 0 as pullup");
   pinMode(0, INPUT_PULLUP);
 
+  Serial.println("WDT disable");
   esp_task_wdt_deinit();  // Disable watchdog
 
+  Serial.println("RST reason");
   check_reset_reason();
 
+  Serial.println("create core loop");
   xTaskCreatePinnedToCore((TaskFunction_t)&core_loop, "core_loop", 4096, &core_task_time_us, TASK_CORE_PRIO,
                           &main_loop_task, CORE_FUNCTION_CORE);
 }
@@ -256,14 +296,20 @@ void core_loop(void* task_time_us) {
     monitor_equipment_stop_button();
 #endif
 
+#ifdef CAN_NATIVE_USED
     // Input, Runs as fast as possible
     receive_can_native();  // Receive CAN messages from native CAN port
-#ifdef CAN_FD
+#endif
+#if defined(CANFD_NATIVE_USED) || defined(CAN_ADDON_FD_MCP2517_USED)
     receive_canfd();  // Receive CAN-FD messages.
 #endif
-#ifdef DUAL_CAN
+#ifdef CAN_ADDON_MCP2515_USED
     receive_can_addonMCP2515();  // Receive CAN messages on add-on MCP2515 chip
 #endif
+#ifdef CAN_ADDON_MCP2515_2_USED
+    receive_can_addonMCP2515_2();  // Receive CAN messages on second add-on MCP2515 chip
+#endif
+
 #if defined(SERIAL_LINK_RECEIVER) || defined(SERIAL_LINK_TRANSMITTER)
     runSerialDataLink();
 #endif
@@ -414,6 +460,8 @@ void init_stored_settings() {
 }
 
 void init_CAN() {
+#ifdef CAN_NATIVE_USED
+#if CAN_0_TYPE == LIB_ESP32CAN
 // CAN pins
 #ifdef CAN_SE_PIN
   pinMode(CAN_SE_PIN, OUTPUT);
@@ -428,16 +476,19 @@ void init_CAN() {
   CAN_cfg.rx_queue = xQueueCreate(rx_queue_size, sizeof(CAN_frame_t));
   // Init CAN Module
   ESP32Can.CANInit();
-
-#ifdef DUAL_CAN
-#ifdef DEBUG_VIA_USB
-  Serial.println("Dual CAN Bus (ESP32+MCP2515) selected");
 #endif
-  gBuffer.initWithSize(25);
-  SPI.begin(MCP2515_SCK, MCP2515_MISO, MCP2515_MOSI);
-  ACAN2515Settings settings(QUARTZ_FREQUENCY, 500UL * 1000UL);  // CAN bit rate 500 kb/s
-  settings.mRequestedMode = ACAN2515Settings::NormalMode;
-  const uint16_t errorCodeMCP = can.begin(settings, [] { can.isr(); });
+#endif
+#if CAN_0_TYPE == LIB_ACAN_ESP32
+#ifdef DEBUG_VIA_USB
+  Serial.println("NATIVE CAN BUS selected (ACAN_ESP32)");
+#endif
+  //gBuffer0.initWithSize(25);
+  ACAN_ESP32_Settings settings0(500UL * 1000UL);  // CAN bit rate 500 kb/s
+  //settings0.mRxPin = CAN_RX_PIN;
+  //settings0.mTxPin = CAN_TX_PIN;
+  Serial.println("*");
+  const uint32_t errorCodeMCP = ACAN_ESP32::can.begin(settings0);
+  Serial.println("**");
   if (errorCodeMCP == 0) {
 #ifdef DEBUG_VIA_USB
     Serial.println("Can ok");
@@ -450,8 +501,50 @@ void init_CAN() {
     set_event(EVENT_CANMCP_INIT_FAILURE, (uint8_t)errorCodeMCP);
   }
 #endif
+#ifdef CAN_ADDON_MCP2515_USED
+#ifdef DEBUG_VIA_USB
+  Serial.println("CAN Bus over SPI (ESP32+MCP2515) selected");
+#endif
+  gBuffer1.initWithSize(25);
+  SPI.begin(MCP2515_SCK, MCP2515_MISO, MCP2515_MOSI, MCP2515_CS);
+  ACAN2515Settings settings1(QUARTZ_FREQUENCY, 500UL * 1000UL);  // CAN bit rate 500 kb/s
+  settings1.mRequestedMode = ACAN2515Settings::NormalMode;
+  const uint16_t errorCodeMCP1 = can1.begin(settings1, [] { can1.isr(); });
+  if (errorCodeMCP1 == 0) {
+#ifdef DEBUG_VIA_USB
+    Serial.println("Can ok");
+#endif
+  } else {
+#ifdef DEBUG_VIA_USB
+    Serial.print("Error Can: 0x");
+    Serial.println(errorCodeMCP1, HEX);
+#endif
+    set_event(EVENT_CANMCP_INIT_FAILURE, (uint8_t)errorCodeMCP1);
+  }
+#endif
+#ifdef CAN_ADDON_MCP2515_2_USED
+#ifdef DEBUG_VIA_USB
+  Serial.println("CAN Bus over SPI2 (ESP32+MCP2515) selected");
+#endif
+  gBuffer2.initWithSize(25);
+  hspi->begin(MCP2515_2_SCK, MCP2515_2_MISO, MCP2515_2_MOSI, MCP2515_2_CS);
+  ACAN2515Settings settings2(QUARTZ_FREQUENCY, 500UL * 1000UL);  // CAN bit rate 500 kb/s
+  settings2.mRequestedMode = ACAN2515Settings::NormalMode;
+  const uint16_t errorCodeMCP2 = can2.begin(settings2, [] { can2.isr(); });
+  if (errorCodeMCP2 == 0) {
+#ifdef DEBUG_VIA_USB
+    Serial.println("Can (SPI2) ok");
+#endif
+  } else {
+#ifdef DEBUG_VIA_USB
+    Serial.print("Error Can (SPI2): 0x");
+    Serial.println(errorCodeMCP2, HEX);
+#endif
+    set_event(EVENT_CANMCP_INIT_FAILURE, (uint8_t)errorCodeMCP2);
+  }
+#endif
 
-#ifdef CAN_FD
+#ifdef CAN_ADDON_FD_MCP2517_USED
 #ifdef DEBUG_VIA_USB
   Serial.println("CAN FD add-on (ESP32+MCP2517) selected");
 #endif
@@ -492,15 +585,60 @@ void init_CAN() {
     set_event(EVENT_CANFD_INIT_FAILURE, (uint8_t)errorCode);
   }
 #endif
+#ifdef CAN_ADDON_FD_MCP2517_2_USED
+#ifdef DEBUG_VIA_USB
+  Serial.println("CAN FD add-on on SPI2(ESP32+MCP2517) selected");
+#endif
+  hspi->begin(MCP2517_SCK, MCP2517_SDO, MCP2517_SDI, MCP2517_CS);
+  ACAN2517FDSettings settings(CAN_FD_CRYSTAL_FREQUENCY_MHZ, 500 * 1000,
+                              DataBitRateFactor::x4);  // Arbitration bit rate: 500 kbit/s, data bit rate: 2 Mbit/s
+#ifdef USE_CANFD_INTERFACE_AS_CLASSIC_CAN
+  settings.mRequestedMode = ACAN2517FDSettings::Normal20B;  // ListenOnly / Normal20B / NormalFD
+#else
+  settings.mRequestedMode = ACAN2517FDSettings::NormalFD;  // ListenOnly / Normal20B / NormalFD
+#endif
+  const uint32_t errorCode = canfd2.begin(settings, [] { canfd2.isr(); });
+  canfd2.poll();
+  if (errorCode == 0) {
+#ifdef DEBUG_VIA_USB
+    Serial.print("Bit Rate prescaler: ");
+    Serial.println(settings.mBitRatePrescaler);
+    Serial.print("Arbitration Phase segment 1: ");
+    Serial.println(settings.mArbitrationPhaseSegment1);
+    Serial.print("Arbitration Phase segment 2: ");
+    Serial.println(settings.mArbitrationPhaseSegment2);
+    Serial.print("Arbitration SJW:");
+    Serial.println(settings.mArbitrationSJW);
+    Serial.print("Actual Arbitration Bit Rate: ");
+    Serial.print(settings.actualArbitrationBitRate());
+    Serial.println(" bit/s");
+    Serial.print("Exact Arbitration Bit Rate ? ");
+    Serial.println(settings.exactArbitrationBitRate() ? "yes" : "no");
+    Serial.print("Arbitration Sample point: ");
+    Serial.print(settings.arbitrationSamplePointFromBitStart());
+    Serial.println("%");
+#endif
+  } else {
+#ifdef DEBUG_VIA_USB
+    Serial.print("CAN-FD SPI2 Configuration error 0x");
+    Serial.println(errorCode, HEX);
+#endif
+    set_event(EVENT_CANFD_INIT_FAILURE, (uint8_t)errorCode);
+  }
+#endif
 }
 
 void init_contactors() {
   // Init contactor pins
 #ifdef CONTACTOR_CONTROL
 #ifndef PWM_CONTACTOR_CONTROL
+  Serial.println("POS PIN mode");
   pinMode(POSITIVE_CONTACTOR_PIN, OUTPUT);
+  Serial.println("POS PIN low");
   digitalWrite(POSITIVE_CONTACTOR_PIN, LOW);
+  Serial.println("NEG PIN mode");
   pinMode(NEGATIVE_CONTACTOR_PIN, OUTPUT);
+  Serial.println("NEG PIN low");
   digitalWrite(NEGATIVE_CONTACTOR_PIN, LOW);
 #else
   ledcAttachChannel(POSITIVE_CONTACTOR_PIN, PWM_Freq, PWM_Res,
@@ -510,7 +648,9 @@ void init_contactors() {
   ledcWrite(POSITIVE_CONTACTOR_PIN, PWM_Off_Duty);  // Set Positive PWM to 0%
   ledcWrite(NEGATIVE_CONTACTOR_PIN, PWM_Off_Duty);  // Set Negative PWM to 0%
 #endif
+  Serial.println("PCHG PIN mode");
   pinMode(PRECHARGE_PIN, OUTPUT);
+  Serial.println("PCJH PIN low");
   digitalWrite(PRECHARGE_PIN, LOW);
 #endif
 // Init BMS contactor
@@ -521,6 +661,7 @@ void init_contactors() {
 }
 
 void init_rs485() {
+#ifdef RS485_USED
 // Set up Modbus RTU Server
 #ifdef RS485_EN_PIN
   pinMode(RS485_EN_PIN, OUTPUT);
@@ -534,7 +675,7 @@ void init_rs485() {
   pinMode(PIN_5V_EN, OUTPUT);
   digitalWrite(PIN_5V_EN, HIGH);
 #endif
-
+#endif
 #ifdef MODBUS_INVERTER_SELECTED
 #ifdef BYD_MODBUS
   // Init Static data to the RTU Modbus
@@ -614,7 +755,7 @@ void init_equipment_stop_button() {
 
 #endif
 
-#ifdef CAN_FD
+#if defined(CANFD_NATIVE_USED) || defined(CAN_ADDON_FD_MCP2517_USED) || defined(CAN_ADDON_FD_MCP2517_2_USED)
 // Functions
 #ifdef DEBUG_CANFD_DATA
 enum frameDirection { MSG_RX, MSG_TX };
@@ -647,13 +788,14 @@ void receive_canfd() {  // This section checks if we have a complete CAN-FD mess
       rx_frame.data.u8[i] = frame.data[i];
     }
     //message incoming, pass it on to the handler
-    receive_can(&rx_frame, CAN_ADDON_FD_MCP2518);
-    receive_can(&rx_frame, CANFD_NATIVE);
+    receive_can(&rx_frame, IF_CAN_ADDON_FD_MCP2517);
+    receive_can(&rx_frame, IF_CANFD_NATIVE);  //??? why not separated?
   }
 }
 #endif
 
 void receive_can_native() {  // This section checks if we have a complete CAN message incoming on native CAN port
+#if CAN_0_TYPE == LIB_ESP32CAN
   CAN_frame_t rx_frame_native;
   if (xQueueReceive(CAN_cfg.rx_queue, &rx_frame_native, 0) == pdTRUE) {
     CAN_frame rx_frame;
@@ -668,8 +810,27 @@ void receive_can_native() {  // This section checks if we have a complete CAN me
       rx_frame.data.u8[i] = rx_frame_native.data.u8[i];
     }
     //message incoming, pass it on to the handler
-    receive_can(&rx_frame, CAN_NATIVE);
+    receive_can(&rx_frame, IF_CAN_NATIVE);
   }
+#endif
+#if CAN_0_TYPE == LIB_ACAN_ESP32
+  CAN_frame rx_frame;           // Struct with our CAN format
+  CANMessage ACAN_ESP32_Frame;  // Struct with ACAN2515 library format, needed to use the MCP2515 library
+
+  if (ACAN_ESP32::can.available()) {
+    ACAN_ESP32::can.receive(ACAN_ESP32_Frame);
+
+    rx_frame.ID = ACAN_ESP32_Frame.id;
+    rx_frame.ext_ID = ACAN_ESP32_Frame.ext ? CAN_frame_ext : CAN_frame_std;
+    rx_frame.DLC = ACAN_ESP32_Frame.len;
+    for (uint8_t i = 0; i < ACAN_ESP32_Frame.len && i < 8; i++) {
+      rx_frame.data.u8[i] = ACAN_ESP32_Frame.data[i];
+    }
+
+    //message incoming, pass it on to the handler
+    receive_can(&rx_frame, IF_CAN_NATIVE);
+  }
+#endif
 }
 
 void send_can() {
@@ -688,13 +849,13 @@ void send_can() {
 #endif  // CHARGER_SELECTED
 }
 
-#ifdef DUAL_CAN
+#ifdef CAN_ADDON_MCP2515_USED
 void receive_can_addonMCP2515() {  // This section checks if we have a complete CAN message incoming on add-on CAN port
   CAN_frame rx_frame;              // Struct with our CAN format
   CANMessage MCP2515Frame;         // Struct with ACAN2515 library format, needed to use the MCP2515 library
 
-  if (can.available()) {
-    can.receive(MCP2515Frame);
+  if (can1.available()) {
+    can1.receive(MCP2515Frame);
 
     rx_frame.ID = MCP2515Frame.id;
     rx_frame.ext_ID = MCP2515Frame.ext ? CAN_frame_ext : CAN_frame_std;
@@ -704,7 +865,28 @@ void receive_can_addonMCP2515() {  // This section checks if we have a complete 
     }
 
     //message incoming, pass it on to the handler
-    receive_can(&rx_frame, CAN_ADDON_MCP2515);
+    receive_can(&rx_frame, IF_CAN_ADDON_MCP2515);
+  }
+}
+#endif  // DUAL_CAN
+
+#ifdef CAN_ADDON_MCP2515_2_USED
+void receive_can_addonMCP2515_2() {  // This section checks if we have a complete CAN message incoming on add-on CAN port
+  CAN_frame rx_frame;                // Struct with our CAN format
+  CANMessage MCP2515Frame;           // Struct with ACAN2515 library format, needed to use the MCP2515 library
+
+  if (can2.available()) {
+    can2.receive(MCP2515Frame);
+
+    rx_frame.ID = MCP2515Frame.id;
+    rx_frame.ext_ID = MCP2515Frame.ext ? CAN_frame_ext : CAN_frame_std;
+    rx_frame.DLC = MCP2515Frame.len;
+    for (uint8_t i = 0; i < MCP2515Frame.len && i < 8; i++) {
+      rx_frame.data.u8[i] = MCP2515Frame.data[i];
+    }
+
+    //message incoming, pass it on to the handler
+    receive_can(&rx_frame, IF_CAN_ADDON_MCP2515_2);
   }
 }
 #endif  // DUAL_CAN
@@ -1044,7 +1226,8 @@ void transmit_can(CAN_frame* tx_frame, int interface) {
   }
 
   switch (interface) {
-    case CAN_NATIVE:
+    case IF_CAN_NATIVE: {
+#if CAN_0_TYPE == LIB_ESP32CAN
       CAN_frame_t frame;
       frame.MsgID = tx_frame->ID;
       frame.FIR.B.FF = tx_frame->ext_ID ? CAN_frame_ext : CAN_frame_std;
@@ -1054,9 +1237,21 @@ void transmit_can(CAN_frame* tx_frame, int interface) {
         frame.data.u8[i] = tx_frame->data.u8[i];
       }
       ESP32Can.CANWriteFrame(&frame);
-      break;
-    case CAN_ADDON_MCP2515: {
-#ifdef DUAL_CAN
+#elif CAN_0_TYPE == LIB_ACAN_ESP32
+      //Struct with ACAN2515 library format, needed to use the MCP2515 library for CAN2
+      CANMessage ACAN_ESP32_Frame;
+      ACAN_ESP32_Frame.id = tx_frame->ID;
+      ACAN_ESP32_Frame.ext = tx_frame->ext_ID ? CAN_frame_ext : CAN_frame_std;
+      ACAN_ESP32_Frame.len = tx_frame->DLC;
+      ACAN_ESP32_Frame.rtr = false;
+      for (uint8_t i = 0; i < ACAN_ESP32_Frame.len; i++) {
+        ACAN_ESP32_Frame.data[i] = tx_frame->data.u8[i];
+      }
+      ACAN_ESP32::can.tryToSend(ACAN_ESP32_Frame);
+#endif
+    } break;
+    case IF_CAN_ADDON_MCP2515: {
+#if defined(CAN_ADDON_MCP2515_USED)
       //Struct with ACAN2515 library format, needed to use the MCP2515 library for CAN2
       CANMessage MCP2515Frame;
       MCP2515Frame.id = tx_frame->ID;
@@ -1066,54 +1261,72 @@ void transmit_can(CAN_frame* tx_frame, int interface) {
       for (uint8_t i = 0; i < MCP2515Frame.len; i++) {
         MCP2515Frame.data[i] = tx_frame->data.u8[i];
       }
-      can.tryToSend(MCP2515Frame);
-#else   // Interface not compiled, and settings try to use it
+      can1.tryToSend(MCP2515Frame);
+#else  // Interface not compiled, and settings try to use it
       set_event(EVENT_INTERFACE_MISSING, interface);
-#endif  //DUAL_CAN
+#endif
     } break;
-    case CANFD_NATIVE:
-    case CAN_ADDON_FD_MCP2518: {
-#ifdef CAN_FD
-      CANFDMessage MCP2518Frame;
-      MCP2518Frame.id = tx_frame->ID;
-      MCP2518Frame.ext = tx_frame->ext_ID ? CAN_frame_ext : CAN_frame_std;
-      MCP2518Frame.len = tx_frame->DLC;
-      for (uint8_t i = 0; i < MCP2518Frame.len; i++) {
-        MCP2518Frame.data[i] = tx_frame->data.u8[i];
+    case IF_CAN_ADDON_MCP2515_2: {
+#if defined(CAN_ADDON_MCP2515_2_USED)
+      //Struct with ACAN2515 library format, needed to use the MCP2515 library for CAN2
+      CANMessage MCP2515Frame2;
+      MCP2515Frame2.id = tx_frame->ID;
+      MCP2515Frame2.ext = tx_frame->ext_ID ? CAN_frame_ext : CAN_frame_std;
+      MCP2515Frame2.len = tx_frame->DLC;
+      MCP2515Frame2.rtr = false;
+      for (uint8_t i = 0; i < MCP2515Frame2.len; i++) {
+        MCP2515Frame2.data[i] = tx_frame->data.u8[i];
       }
-      send_ok = canfd.tryToSend(MCP2518Frame);
+      can2.tryToSend(MCP2515Frame2);
+#else  // Interface not compiled, and settings try to use it
+      set_event(EVENT_INTERFACE_MISSING, interface);
+#endif
+    } break;
+    case IF_CANFD_NATIVE:
+    case IF_CAN_ADDON_FD_MCP2517: {
+#if defined(CAN)
+      CANFDMessage MCP2517Frame;
+      MCP2517Frame.id = tx_frame->ID;
+      MCP2517Frame.ext = tx_frame->ext_ID ? CAN_frame_ext : CAN_frame_std;
+      MCP2517Frame.len = tx_frame->DLC;
+      for (uint8_t i = 0; i < MCP2517Frame.len; i++) {
+        MCP2517Frame.data[i] = tx_frame->data.u8[i];
+      }
+      send_ok = canfd.tryToSend(MCP2517Frame);
       if (!send_ok) {
         set_event(EVENT_CANFD_BUFFER_FULL, interface);
       } else {
 #ifdef DEBUG_CANFD_DATA
-        print_canfd_frame(MCP2518Frame, frameDirection(MSG_TX));
+        print_canfd_frame(MCP2517Frame, frameDirection(MSG_TX));
 #endif
       }
 #else   // Interface not compiled, and settings try to use it
       set_event(EVENT_INTERFACE_MISSING, interface);
 #endif  //CAN_FD
     } break;
+
     default:
       // Invalid interface sent with function call. TODO: Raise event that coders messed up
       break;
   }
 }
+
 void receive_can(CAN_frame* rx_frame, int interface) {
 
-  if (interface == can_config.battery) {
+  if (interface == if_config.battery) {
     receive_can_battery(*rx_frame);
   }
-  if (interface == can_config.inverter) {
+  if (interface == if_config.inverter) {
 #ifdef CAN_INVERTER_SELECTED
     receive_can_inverter(*rx_frame);
 #endif
   }
-  if (interface == can_config.battery_double) {
+  if (interface == if_config.battery_2) {
 #ifdef DOUBLE_BATTERY
     receive_can_battery2(*rx_frame);
 #endif
   }
-  if (interface == can_config.charger) {
+  if (interface == if_config.charger) {
 #ifdef CHARGER_SELECTED
     receive_can_charger(*rx_frame);
 #endif

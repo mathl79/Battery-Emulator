@@ -692,8 +692,8 @@ void send_can_battery() {
      * that is the limiting factor. Therefore, we
      * can generally send as is without tweaks here.
      */
-    transmit_can(&CHADEMO_108, can_config.battery);
-    transmit_can(&CHADEMO_109, can_config.battery);
+    transmit_can(&CHADEMO_108, if_config.battery);
+    transmit_can(&CHADEMO_109, if_config.battery);
 
     /* TODO for dynamic control: can send x118 with byte 6 bit 0 set to 0 for 1s (before flipping back to 1) as a way of giving vehicle a chance to update 101.1 and 101.2
      * 	within 6 seconds of x118 toggle.
@@ -702,9 +702,9 @@ void send_can_battery() {
      */
 
     if (EVSE_mode == CHADEMO_DISCHARGE || EVSE_mode == CHADEMO_BIDIRECTIONAL) {
-      transmit_can(&CHADEMO_208, can_config.battery);
+      transmit_can(&CHADEMO_208, if_config.battery);
       if (x201_received) {
-        transmit_can(&CHADEMO_209, can_config.battery);
+        transmit_can(&CHADEMO_209, if_config.battery);
         x209_sent = true;
       }
     }
@@ -716,7 +716,7 @@ void send_can_battery() {
       //FIXME REMOVE
       Serial.println("REMOVE: proto 2.0");
 #endif
-      transmit_can(&CHADEMO_118, can_config.battery);
+      transmit_can(&CHADEMO_118, if_config.battery);
     }
   }
 }

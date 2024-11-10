@@ -9,22 +9,26 @@
 CAN_NATIVE = Native CAN port on the LilyGo & Stark hardware
 CANFD_NATIVE = Native CANFD port on the Stark CMR hardware
 CAN_ADDON_MCP2515 = Add-on CAN MCP2515 connected to GPIO pins
-CAN_ADDON_FD_MCP2518 = Add-on CAN-FD MCP2518 connected to GPIO pins
+CAN_ADDON_MCP2515_2 = second Add-on CAN MCP2515 connected to GPIO pins
+CAN_ADDON_FD_MCP2517 = Add-on CAN-FD MCP2517 connected to GPIO pins
+CAN_ADDON_FD_MCP2517_2 = second Add-on CAN-FD MCP2517 connected to GPIO pins
 */
 
-volatile CAN_Configuration can_config = {
-    .battery = CAN_NATIVE,   // Which CAN is your battery connected to?
-    .inverter = CAN_NATIVE,  // Which CAN is your inverter connected to? (No need to configure incase you use RS485)
-    .battery_double = CAN_ADDON_MCP2515,  // (OPTIONAL) Which CAN is your second battery connected to?
-    .charger = CAN_NATIVE                 // (OPTIONAL) Which CAN is your charger connected to?
+volatile IF_Configuration if_config = {
+    .battery = INTERFACE_BATTERY,      // Which CAN is your battery connected to?
+    .battery_2 = INTERFACE_BATTERY_2,  // (OPTIONAL) Which CAN is your second battery connected to?
+    .battery_3 = INTERFACE_BATTERY_3,  // (OPTIONAL) Which CAN is your second battery connected to?
+    .inverter =
+        INTERFACE_INVERTER,  // Which CAN is your inverter connected to? (No need to configure incase you use RS485)
+    .charger = INTERFACE_CHARGER  // (OPTIONAL) Which CAN is your charger connected to?
 };
 
 #ifdef WIFI
 
-volatile uint8_t AccessPointEnabled = true;           //Set to either true/false to enable direct wifi access point
-std::string ssid = "REPLACE_WITH_YOUR_SSID";          // Maximum of 63 characters
-std::string password = "REPLACE_WITH_YOUR_PASSWORD";  // Minimum of 8 characters
-const char* ssidAP = "Battery Emulator";  // Maximum of 63 characters, also used for device name on web interface
+volatile uint8_t AccessPointEnabled = true;  //Set to either true/false to enable direct wifi access point
+std::string ssid = "USBWLAN";                // Maximum of 63 characters
+std::string password = "Titp4UnSiBo#";       // Minimum of 8 characters
+const char* ssidAP = "Battery Emulator";     // Maximum of 63 characters, also used for device name on web interface
 const char* passwordAP = "123456789";  // Minimum of 8 characters; set to NULL if you want the access point to be open
 const uint8_t wifi_channel = 0;        // Set to 0 for automatic channel selection
 

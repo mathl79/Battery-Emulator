@@ -22,9 +22,9 @@
 #error You must select a HW to run on!
 #endif
 
-#if defined(DUAL_CAN) && defined(CAN_FD)
+#if defined(DUAL_CAN) && defined(CAN_FD) && (defined(HW_STARK) || defined(HW_LILYGO))
 // Check that user did not try to use dual can and fd-can on same hardware pins
-#error CAN-FD AND DUAL-CAN CANNOT BE USED SIMULTANEOUSLY
+#error CAN-FD AND DUAL-CAN CANNOT BE USED SIMULTANEOUSLY ON LILIGO OR STARK
 #endif
 
 #ifdef USE_CANFD_INTERFACE_AS_CLASSIC_CAN
@@ -49,6 +49,14 @@
 #ifndef CAN_FD
 #error KIA HYUNDAI EGMP BATTERIES CANNOT BE USED WITHOUT CAN FD
 #endif
+#endif
+
+#if defined(CAN_ADDON_FD_MCP2517_USED) && defined(CAN_ADDON_MCP2515_USED)
+#error SPI(VSPI) CANNOT BE USED FOR CAN AND CANFD AT THE SAME TIME
+#endif
+
+#if defined(CAN_ADDON_FD_MCP2517_2_USED) && defined(CAN_ADDON_MCP2515_2_USED)
+#error SPI2(HSPI) CANNOT BE USED FOR CAN AND CANFD AT THE SAME TIME
 #endif
 
 #endif

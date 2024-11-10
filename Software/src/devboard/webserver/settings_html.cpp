@@ -22,16 +22,16 @@ String settings_processor(const String& var) {
         "onclick='editPassword()'>Edit</button></h4>";
 
     content += "<h4 style='color: white;'>Battery interface: <span id='Battery'>" +
-               String(getCANInterfaceName(can_config.battery)) + "</span></h4>";
+               String(getInterfaceName(if_config.battery)) + "</span></h4>";
 
 #ifdef DOUBLE_BATTERY
     content += "<h4 style='color: white;'>Battery #2 interface: <span id='Battery'>" +
-               String(getCANInterfaceName(can_config.battery_double)) + "</span></h4>";
+               String(getInterfaceName(can_config.battery_double)) + "</span></h4>";
 #endif  // DOUBLE_BATTERY
 
 #ifdef CAN_INVERTER_SELECTED
     content += "<h4 style='color: white;'>Inverter interface: <span id='Inverter'>" +
-               String(getCANInterfaceName(can_config.inverter)) + "</span></h4>";
+               String(getInterfaceName(if_config.inverter)) + "</span></h4>";
 #endif  //CAN_INVERTER_SELECTED
 #ifdef MODBUS_INVERTER_SELECTED
     content += "<h4 style='color: white;'>Inverter interface: RS485<span id='Inverter'></span></h4>";
@@ -211,24 +211,28 @@ String settings_processor(const String& var) {
   return String();
 }
 
-const char* getCANInterfaceName(CAN_Interface interface) {
+const char* getInterfaceName(int interface) {
   switch (interface) {
-    case CAN_NATIVE:
+    case IF_CAN_NATIVE:
       return "CAN";
-    case CANFD_NATIVE:
+    case IF_CANFD_NATIVE:
 #ifdef USE_CANFD_INTERFACE_AS_CLASSIC_CAN
       return "CAN-FD Native (Classic CAN)";
 #else
       return "CAN-FD Native";
 #endif
-    case CAN_ADDON_MCP2515:
-      return "Add-on CAN via GPIO MCP2515";
-    case CAN_ADDON_FD_MCP2518:
+    case IF_CAN_ADDON_MCP2515:
+      return "Add-on CAN via SPI1 MCP2515";
+    case IF_CAN_ADDON_MCP2515_2:
+      return "Add-on CAN via SPI2 MCP2515";
+    case IF_CAN_ADDON_FD_MCP2517:
 #ifdef USE_CANFD_INTERFACE_AS_CLASSIC_CAN
-      return "Add-on CAN-FD via GPIO MCP2518 (Classic CAN)";
+      return "Add-on CAN-FD via GPIO MCP2517 (Classic CAN)";
 #else
-      return "Add-on CAN-FD via GPIO MCP2518";
+      return "Add-on CAN-FD via SPI1 MCP2517";
 #endif
+    case IF_CAN_ADDON_FD_MCP2517_2:
+      return "Add-on CAN-FD via SPI2 MCP2517";
     default:
       return "UNKNOWN";
   }

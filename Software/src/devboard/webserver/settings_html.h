@@ -24,6 +24,6 @@ String settings_processor(const String& var);
  *
  * @return String
  */
-const char* getCANInterfaceName(CAN_Interface interface);
+const char* getInterfaceName(int interface);
 
 #endif

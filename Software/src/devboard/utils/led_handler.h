@@ -2,7 +2,7 @@
 #define LED_H_
 
 #include "../../include.h"
-#include "../../lib/adafruit-Adafruit_NeoPixel/Adafruit_NeoPixel.h"
+#include "Adafruit_NeoPixel.h"
 #include "timer.h"
 
 enum led_mode { CLASSIC, FLOW, HEARTBEAT };

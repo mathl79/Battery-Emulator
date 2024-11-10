@@ -38,6 +38,7 @@
 #include "soc/dport_reg.h"
 #include "soc/gpio_sig_map.h"
 #include <math.h>
+#include "soc/interrupts.h"
 
 #include "driver/gpio.h"
 
@@ -171,10 +172,16 @@ int CAN_init() {
 	double __tq;
 
 	// enable module
+#ifdef ARDUINO_ESP32S3_DEV
+	DPORT_SET_PERI_REG_MASK(SYSTEM_PERIP_CLK_EN0_REG, SYSTEM_TWAI_CLK_EN);
+	DPORT_SET_PERI_REG_MASK(SYSTEM_PERIP_RST_EN0_REG, SYSTEM_TWAI_RST); 
+	DPORT_CLEAR_PERI_REG_MASK(SYSTEM_PERIP_RST_EN0_REG, SYSTEM_TWAI_RST);
+#else
+	
 	DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, DPORT_CAN_CLK_EN);
 	DPORT_SET_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_CAN_RST); //Added https://github.com/miwagner/ESP32-Arduino-CAN/pull/37/commits/feccb722866fbdcc7628b941efe9f79295b0cf81
 	DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_CAN_RST);
-
+#endif
 	// configure TX pin
 	gpio_set_level(CAN_cfg.tx_pin_id, 1);
 	gpio_set_direction(CAN_cfg.tx_pin_id, GPIO_MODE_OUTPUT);
@@ -253,7 +260,7 @@ int CAN_init() {
 	(void) MODULE_CAN->IR.U;
 
 	// install CAN ISR
-	esp_intr_alloc(ETS_CAN_INTR_SOURCE, 0, CAN_isr, NULL, NULL);
+	esp_intr_alloc(ETS_TWAI_INTR_SOURCE, 0, CAN_isr, NULL, NULL);
 
 	// allocate the tx complete semaphore
 	sem_tx_complete = xSemaphoreCreateBinary();

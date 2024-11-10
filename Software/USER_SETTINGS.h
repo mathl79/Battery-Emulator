@@ -12,7 +12,7 @@
 //#define BMW_I3_BATTERY
 //#define BYD_ATTO_3_BATTERY
 //#define CELLPOWER_BMS
-//#define CHADEMO_BATTERY	//NOTE: inherently enables CONTACTOR_CONTROL below
+#define CHADEMO_BATTERY  //NOTE: inherently enables CONTACTOR_CONTROL below
 //#define IMIEV_CZERO_ION_BATTERY
 //#define JAGUAR_IPACE_BATTERY
 //#define KIA_HYUNDAI_64_BATTERY
@@ -35,7 +35,7 @@
 
 /* Select inverter communication protocol. See Wiki for which to use with your inverter: https://github.com/dalathegreat/BYD-Battery-Emulator-For-Gen24/wiki */
 //#define AFORE_CAN //Enable this line to emulate an "Afore battery" over CAN bus
-//#define BYD_CAN  //Enable this line to emulate a "BYD Battery-Box Premium HVS" over CAN Bus
+#define BYD_CAN  //Enable this line to emulate a "BYD Battery-Box Premium HVS" over CAN Bus
 //#define BYD_SMA //Enable this line to emulate a SMA compatible "BYD Battery-Box HVS 10.2KW battery" over CAN bus
 //#define BYD_MODBUS  //Enable this line to emulate a "BYD 11kWh HVM battery" over Modbus RTU
 //#define FOXESS_CAN       //Enable this line to emulate a "HV2600/ECS4100 battery" over CAN bus
@@ -46,22 +46,40 @@
 //#define SOLAX_CAN        //Enable this line to emulate a "SolaX Triple Power LFP" over CAN bus
 
 /* Select hardware used for Battery-Emulator */
-#define HW_LILYGO
+//#define HW_LILYGO
 //#define HW_STARK
+#define HW_ESP32_S3_DEVKIT  //no CAN transceiver installed => (1-3x) MCP251x connected via SPI is mandatory
+
+//Interface assignment:
+//possible flags are:
+//  IF_NOT_CONNECTED,
+//  IF_CAN_NATIVE,
+//  IF_CANFD_NATIVE,
+//  IF_CAN_ADDON_MCP2515,
+//  IF_CAN_ADDON_FD_MCP2517,
+//  IF_CAN_ADDON_MCP2515_2,
+//  IF_CAN_ADDON_FD_MCP2517,2
+//  IF_RS485
+
+#define INTERFACE_BATTERY IF_CAN_NATIVE
+#define INTERFACE_BATTERY_2 IF_CAN_NATIVE
+#define INTERFACE_BATTERY_3 IF_NOT_CONNECTED
+#define INTERFACE_INVERTER IF_CAN_NATIVE
+#define INTERFACE_CHARGER IF_NOT_CONNECTED
 
 /* Other options */
-//#define DEBUG_VIA_USB  //Enable this line to have the USB port output serial diagnostic data while program runs (WARNING, raises CPU load, do not use for production)
+#define DEBUG_VIA_USB  //Enable this line to have the USB port output serial diagnostic data while program runs (WARNING, raises CPU load, do not use for production)
 //#define DEBUG_CANFD_DATA    //Enable this line to have the USB port output CAN-FD data while program runs (WARNING, raises CPU load, do not use for production)
 //#define INTERLOCK_REQUIRED  //Nissan LEAF specific setting, if enabled requires both high voltage conenctors to be seated before starting
-//#define CONTACTOR_CONTROL     //Enable this line to have pins 25,32,33 handle automatic precharge/contactor+/contactor- closing sequence
+#define CONTACTOR_CONTROL  //Enable this line to have pins 25,32,33 handle automatic precharge/contactor+/contactor- closing sequence
 //#define PWM_CONTACTOR_CONTROL //Enable this line to use PWM for CONTACTOR_CONTROL, which lowers power consumption and heat generation. CONTACTOR_CONTROL must be enabled.
-//#define DUAL_CAN  //Enable this line to activate an isolated secondary CAN Bus using add-on MCP2515 chip (Needed for some inverters / double battery)
+
 #define CRYSTAL_FREQUENCY_MHZ 8  //DUAL_CAN option, what is your MCP2515 add-on boards crystal frequency?
-//#define CAN_FD  //Enable this line to activate an isolated secondary CAN-FD bus using add-on MCP2518FD chip / Native CANFD on Stark board
+
 #ifdef CAN_FD  // CAN_FD additional options if enabled
 #define CAN_FD_CRYSTAL_FREQUENCY_MHZ \
   ACAN2517FDSettings::               \
-      OSC_40MHz  //CAN_FD option, what is your MCP2518 add-on boards crystal frequency? (Default OSC_40MHz)
+      OSC_40MHz  //CAN_FD option, what is your MCP2517 add-on boards crystal frequency? (Default OSC_40MHz)
 #endif
 //#define USE_CANFD_INTERFACE_AS_CLASSIC_CAN // Enable this line if you intend to use the CANFD as normal CAN
 //#define SERIAL_LINK_RECEIVER  //Enable this line to receive battery data over RS485 pins from another Lilygo (This LilyGo interfaces with inverter)
@@ -75,7 +93,7 @@
 #define MDNSRESPONDER  //Enable this line to enable MDNS, allows battery monitor te be found by .local address. Requires WEBSERVER to be enabled.
 #define LOAD_SAVED_SETTINGS_ON_BOOT  //Enable this line to read settings stored via the webserver on boot (overrides Wifi/battery settings set below)
 //#define FUNCTION_TIME_MEASUREMENT  // Enable this to record execution times and present them in the web UI (WARNING, raises CPU load, do not use for production)
-//#define EQUIPMENT_STOP_BUTTON      // Enable this to allow an equipment stop button connected to the Battery-Emulator to disengage the battery
+#define EQUIPMENT_STOP_BUTTON  // Enable this to allow an equipment stop button connected to the Battery-Emulator to disengage the battery
 
 /* MQTT options */
 // #define MQTT  // Enable this line to enable MQTT
@@ -115,14 +133,65 @@
 
 /* Do not change any code below this line unless you are sure what you are doing */
 /* Only change battery specific settings in "USER_SETTINGS.h" */
-typedef enum { CAN_NATIVE = 0, CANFD_NATIVE = 1, CAN_ADDON_MCP2515 = 2, CAN_ADDON_FD_MCP2518 = 3 } CAN_Interface;
+
+#define IF_NOT_CONNECTED 0
+#define IF_CAN_NATIVE 1
+#define IF_CANFD_NATIVE 2
+#define IF_CAN_ADDON_MCP2515 4
+#define IF_CAN_ADDON_FD_MCP2517 8
+#define IF_CAN_ADDON_MCP2515_2 16
+#define IF_CAN_ADDON_FD_MCP2517_2 32
+#define IF_RS485 64
+
+#define INTERFACE_CONFIG \
+  (INTERFACE_BATTERY | INTERFACE_BATTERY_2 | INTERFACE_BATTERY_3 | INTERFACE_INVERTER | INTERFACE_CHARGER)
+
+#if (INTERFACE_CONFIG & IF_CAN_NATIVE)
+#define CAN_NATIVE_USED
+#endif
+
+#if (INTERFACE_CONFIG & IF_CANFD_NATIVE)
+#define CANFD_NATIVE_USED
+#ifndef CAN_FD
+#define CAN_FD
+#endif
+#endif
+
+#if (INTERFACE_CONFIG & IF_CAN_ADDON_MCP2515)
+#define CAN_ADDON_MCP2515_USED
+#endif
+
+#if (INTERFACE_CONFIG & IF_CAN_ADDON_MCP2515_2)
+#define CAN_ADDON_MCP2515_2_USED
+#endif
+
+#if (INTERFACE_CONFIG & IF_CAN_ADDON_FD_MCP2517)
+#define CAN_ADDON_FD_MCP2517_USED
+#ifndef CAN_FD
+#define CAN_FD
+#endif
+#endif
+
+#if (INTERFACE_CONFIG & IF_CAN_ADDON_FD_MCP2517_2)
+#define CAN_ADDON_FD_MCP2517_2_USED
+#ifndef CAN_FD
+#define CAN_FD
+#endif
+#endif
+
+#if (INTERFACE_CONFIG & IF_RS485)
+#define RS485_USED
+#endif
+
 typedef struct {
-  CAN_Interface battery;
-  CAN_Interface inverter;
-  CAN_Interface battery_double;
-  CAN_Interface charger;
-} CAN_Configuration;
-extern volatile CAN_Configuration can_config;
+  int battery;
+  int battery_2;
+  int battery_3;
+  int inverter;
+  int charger;
+} IF_Configuration;
+
+extern volatile IF_Configuration if_config;
 extern volatile uint8_t AccessPointEnabled;
 extern const uint8_t wifi_channel;
 extern volatile float charger_setpoint_HV_VDC;
