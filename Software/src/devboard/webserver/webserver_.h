@@ -1,14 +1,16 @@
-#ifndef WEBSERVER_H
-#define WEBSERVER_H
-
+#ifndef WEBSERVER__H  //WEBSERVER_H causes name collision in ESPAsyncWebServer.h "#ifndef WEBSERVER_H ..."
+#define WEBSERVER__H
+#define ELEGANTOTA_USE_ASYNC_WEBSERVER 1  //default setting is non async WebServer
 #include <Preferences.h>
 #include <WiFi.h>
 #include "../../include.h"
 #include "../../lib/YiannisBourkelis-Uptime-Library/src/uptime_formatter.h"
-#include "../../lib/ayushsharma82-ElegantOTA/src/ElegantOTA.h"
-#include "../../lib/me-no-dev-AsyncTCP/src/AsyncTCP.h"
-#include "../../lib/me-no-dev-ESPAsyncWebServer/src/ESPAsyncWebServer.h"
 #include "../../lib/miwagner-ESP32-Arduino-CAN/ESP32CAN.h"
+
+#include "ElegantOTA.h"
+
+#include "AsyncTCP.h"
+#include "ESPAsyncWebServer.h"
 
 extern const char* version_number;  // The current software version, shown on webserver
 

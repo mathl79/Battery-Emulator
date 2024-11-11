@@ -1,4 +1,5 @@
-#include "webserver.h"
+#include "webserver_.h"
+
 #include <Preferences.h>
 #include "../../datalayer/datalayer.h"
 #include "../../lib/bblanchon-ArduinoJson/ArduinoJson.h"
@@ -33,40 +34,40 @@ void init_webserver() {
   server.on("/GetFirmwareInfo", HTTP_GET, [](AsyncWebServerRequest* request) {
     if (WEBSERVER_AUTH_REQUIRED && !request->authenticate(http_username, http_password))
       return request->requestAuthentication();
-    request->send_P(200, "application/json", get_firmware_info_html, get_firmware_info_processor);
+    request->send(200, "application/json", get_firmware_info_html, get_firmware_info_processor);
   });
 
   // Route for root / web page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
     if (WEBSERVER_AUTH_REQUIRED && !request->authenticate(http_username, http_password))
       return request->requestAuthentication();
-    request->send_P(200, "text/html", index_html, processor);
+    request->send(200, "text/html", index_html, processor);
   });
 
   // Route for going to settings web page
   server.on("/settings", HTTP_GET, [](AsyncWebServerRequest* request) {
     if (WEBSERVER_AUTH_REQUIRED && !request->authenticate(http_username, http_password))
       return request->requestAuthentication();
-    request->send_P(200, "text/html", index_html, settings_processor);
+    request->send(200, "text/html", index_html, settings_processor);
   });
 
   // Route for going to advanced battery info web page
   server.on("/advanced", HTTP_GET, [](AsyncWebServerRequest* request) {
-    request->send_P(200, "text/html", index_html, advanced_battery_processor);
+    request->send(200, "text/html", index_html, advanced_battery_processor);
   });
 
   // Route for going to cellmonitor web page
   server.on("/cellmonitor", HTTP_GET, [](AsyncWebServerRequest* request) {
     if (WEBSERVER_AUTH_REQUIRED && !request->authenticate(http_username, http_password))
       return request->requestAuthentication();
-    request->send_P(200, "text/html", index_html, cellmonitor_processor);
+    request->send(200, "text/html", index_html, cellmonitor_processor);
   });
 
   // Route for going to event log web page
   server.on("/events", HTTP_GET, [](AsyncWebServerRequest* request) {
     if (WEBSERVER_AUTH_REQUIRED && !request->authenticate(http_username, http_password))
       return request->requestAuthentication();
-    request->send_P(200, "text/html", index_html, events_processor);
+    request->send(200, "text/html", index_html, events_processor);
   });
 
   // Route for clearing all events
